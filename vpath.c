@@ -385,13 +385,7 @@ selective_vpath_search (struct vpath *path, const char *file,
       /* Add the directory prefix already in *FILE.  */
       if (name_dplen > 0)
         {
-#ifndef VMS
           *p++ = '/';
-#else
-          /* VMS: if this is not in VMS format, treat as Unix format */
-          if ((*p != ':') && (*p != ']') && (*p != '>'))
-            *p++ = '/';
-#endif
           memcpy (p, file, name_dplen);
           p += name_dplen;
         }
@@ -402,23 +396,12 @@ selective_vpath_search (struct vpath *path, const char *file,
         p[-1] = '/';
 #endif
       /* Now add the name-within-directory at the end of NAME.  */
-#ifndef VMS
       if (p != name && p[-1] != '/')
         {
           *p = '/';
           memcpy (p + 1, filename, flen + 1);
         }
       else
-#else
-      /* VMS use a slash if no directory terminator present */
-      if (p != name && p[-1] != '/' && p[-1] != ':' &&
-          p[-1] != '>' && p[-1] != ']')
-        {
-          *p = '/';
-          memcpy (p + 1, filename, flen + 1);
-        }
-      else
-#endif
         memcpy (p, filename, flen + 1);
 
       /* Check if the file is mentioned in a makefile.  If *FILE is not
@@ -461,12 +444,6 @@ selective_vpath_search (struct vpath *path, const char *file,
           /* That file wasn't mentioned in the makefile.
              See if it actually exists.  */
 
-#ifdef VMS
-          /* For VMS syntax just use the original vpath */
-          if (*p != '/')
-            exists_in_cache = exists = dir_file_exists_p (vpath[i], filename);
-          else
-#endif
             {
               /* Clobber a null into the name at the last slash.
                  Now NAME is the name of the directory to look in.  */
@@ -488,14 +465,8 @@ selective_vpath_search (struct vpath *path, const char *file,
 
           struct stat st;
 
-#ifndef VMS
           /* Put the slash back in NAME.  */
           *p = '/';
-#else
-          /* If the slash was removed, put it back */
-          if (*p == 0)
-            *p = '/';
-#endif
 
           if (exists_in_cache)  /* Makefile-mentioned file need not exist.  */
             {

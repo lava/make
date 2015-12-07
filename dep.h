@@ -65,18 +65,12 @@ struct nameseq
 #define PARSE_SIMPLE_SEQ(_s,_t) \
             (_t *)parse_file_seq ((_s),sizeof (_t),MAP_NUL,NULL,PARSEFS_NONE)
 
-#ifdef VMS
-void *parse_file_seq ();
-#else
 void *parse_file_seq (char **stringp, unsigned int size,
                       int stopmap, const char *prefix, int flags);
-#endif
 
 char *tilde_expand (const char *name);
 
-#ifndef NO_ARCHIVES
 struct nameseq *ar_glob (const char *arname, const char *member_pattern, unsigned int size);
-#endif
 
 #define dep_name(d)     ((d)->name == 0 ? (d)->file->name : (d)->name)
 

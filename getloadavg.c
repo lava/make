@@ -357,7 +357,6 @@ extern int errno;
 
 # ifdef LOAD_AVE_TYPE
 
-#  ifndef VMS
 #   ifndef __linux__
 #    ifdef HAVE_NLIST_H
 #     include <nlist.h>
@@ -384,15 +383,6 @@ extern int errno;
 #    endif /* LDAV_SYMBOL */
 #   endif /* __linux__ */
 
-#  else /* VMS */
-
-#   ifndef eunice
-#    include <iodef.h>
-#    include <descrip.h>
-#   else /* eunice */
-#    include <vms/iodef.h>
-#   endif /* eunice */
-#  endif /* VMS */
 
 #  ifndef LDAV_CVT
 #   define LDAV_CVT(n) ((double) (n))
@@ -814,45 +804,6 @@ getloadavg (double loadavg[], int nelem)
        : (load_ave.tl_avenrun.l[elem] / (double) load_ave.tl_lscale));
 # endif /* OSF_ALPHA */
 
-# if !defined (LDAV_DONE) && defined (VMS)
-  /* VMS specific code -- read from the Load Ave driver.  */
-
-  LOAD_AVE_TYPE load_ave[3];
-  static int getloadavg_initialized = 0;
-#  ifdef eunice
-  struct
-  {
-    int dsc$w_length;
-    char *dsc$a_pointer;
-  } descriptor;
-#  endif
-
-  /* Ensure that there is a channel open to the load ave device.  */
-  if (!getloadavg_initialized)
-    {
-      /* Attempt to open the channel.  */
-#  ifdef eunice
-      descriptor.dsc$w_length = 18;
-      descriptor.dsc$a_pointer = "$$VMS_LOAD_AVERAGE";
-#  else
-      $DESCRIPTOR (descriptor, "LAV0:");
-#  endif
-      if (sys$assign (&descriptor, &channel, 0, 0) & 1)
-	getloadavg_initialized = 1;
-    }
-
-  /* Read the load average vector.  */
-  if (getloadavg_initialized
-      && !(sys$qiow (0, channel, IO$_READVBLK, 0, 0, 0,
-		     load_ave, 12, 0, 0, 0, 0) & 1))
-    {
-      sys$dassgn (channel);
-      getloadavg_initialized = 0;
-    }
-
-  if (!getloadavg_initialized)
-    return -1;
-# endif /* VMS */
 
 # if !defined (LDAV_DONE) && defined(LOAD_AVE_TYPE) && !defined(VMS)
 

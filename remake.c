@@ -30,9 +30,6 @@ this program.  If not, see <http://www.gnu.org/licenses/>.  */
 #include <sys/file.h>
 #endif
 
-#ifdef VMS
-#include <starlet.h>
-#endif
 #ifdef WINDOWS32
 #include <io.h>
 #endif
@@ -1335,13 +1332,7 @@ f_mtime (struct file *file, int search)
               /* If we found it in VPATH, see if it's in GPATH too; if so,
                  change the name right now; if not, defer until after the
                  dependencies are updated. */
-#ifndef VMS
               name_len = strlen (name) - strlen (file->name) - 1;
-#else
-              name_len = strlen (name) - strlen (file->name);
-              if (name[name_len - 1] == '/')
-                  name_len--;
-#endif
               if (gpath_search (name, name_len))
                 {
                   rename_file (file, name);
@@ -1382,14 +1373,6 @@ f_mtime (struct file *file, int search)
       FILE_TIMESTAMP adjustment = FAT_ADJ_OFFSET << FILE_TIMESTAMP_LO_BITS;
       if (ORDINARY_MTIME_MIN + adjustment <= adjusted_mtime)
         adjusted_mtime -= adjustment;
-#elif defined(__EMX__)
-      /* FAT filesystems round time to the nearest even second!
-         Allow for any file (NTFS or FAT) to perhaps suffer from this
-         brain damage.  */
-      FILE_TIMESTAMP adjustment = (((FILE_TIMESTAMP_S (adjusted_mtime) & 1) == 0
-                     && FILE_TIMESTAMP_NS (adjusted_mtime) == 0)
-                    ? (FILE_TIMESTAMP) 1 << FILE_TIMESTAMP_LO_BITS
-                    : 0);
 #endif
 
       /* If the file's time appears to be in the future, update our
@@ -1557,10 +1540,8 @@ library_search (const char *lib, FILE_TIMESTAMP *mtime_ptr)
 {
   static const char *dirs[] =
     {
-#ifndef _AMIGA
       "/lib",
       "/usr/lib",
-#endif
 #if defined(WINDOWS32) && !defined(LIBDIR)
 /*
  * This is completely up to the user at product install time. Just define

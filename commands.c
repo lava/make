@@ -20,23 +20,10 @@ this program.  If not, see <http://www.gnu.org/licenses/>.  */
 #include "variable.h"
 #include "job.h"
 #include "commands.h"
-#ifdef WINDOWS32
-#include <windows.h>
-#include "w32err.h"
-#endif
 
-#if VMS
-# define FILE_LIST_SEPARATOR (vms_comma_separator ? ',' : ' ')
-#else
 # define FILE_LIST_SEPARATOR ' '
-#endif
 
 int remote_kill (int id, int sig);
-
-#ifndef HAVE_UNISTD_H
-int getpid ();
-#endif
-
 
 static unsigned long
 dep_hash_1 (const void *key)
@@ -487,25 +474,6 @@ int handling_fatal_signal = 0;
 RETSIGTYPE
 fatal_error_signal (int sig)
 {
-#ifdef __MSDOS__
-  extern int dos_status, dos_command_running;
-
-  if (dos_command_running)
-    {
-      /* That was the child who got the signal, not us.  */
-      dos_status |= (sig << 8);
-      return;
-    }
-  remove_intermediates (1);
-  exit (EXIT_FAILURE);
-#else /* not __MSDOS__ */
-#ifdef _AMIGA
-  remove_intermediates (1);
-  if (sig == SIGINT)
-     fputs (_("*** Break.\n"), stderr);
-
-  exit (10);
-#else /* not Amiga */
 #ifdef WINDOWS32
   extern HANDLE main_thread;
 
@@ -600,8 +568,6 @@ fatal_error_signal (int sig)
   if (kill (getpid (), sig) < 0)
     pfatal_with_name ("kill");
 #endif /* not WINDOWS32 */
-#endif /* not Amiga */
-#endif /* not __MSDOS__  */
 }
 
 /* Delete FILE unless it's precious or not actually a file (phony),

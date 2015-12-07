@@ -23,11 +23,7 @@ this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 #include <stdarg.h>
 
-#ifdef HAVE_FCNTL_H
-# include <fcntl.h>
-#else
-# include <sys/file.h>
-#endif
+#include <fcntl.h>
 
 /* Compare strings *S1 and *S2.
    Return negative if the first is less, positive if it is greater,
@@ -182,27 +178,9 @@ concat (unsigned int num, ...)
 
   return result;
 }
-
 
-#ifndef HAVE_STRERROR
-#undef  strerror
-char *
-strerror (int errnum)
-{
-  extern int errno, sys_nerr;
-#ifndef __DECC
-  extern char *sys_errlist[];
-#endif
-  static char buf[] = "Unknown error 12345678901234567890";
 
-  if (errno < sys_nerr)
-    return sys_errlist[errnum];
 
-  sprintf (buf, _("Unknown error %d"), errnum);
-  return buf;
-}
-#endif
-
 /* Like malloc but get fatal error if memory is exhausted.  */
 /* Don't bother if we're using dmalloc; it provides these for us.  */
 
@@ -430,33 +408,7 @@ strcasecmp (const char *s1, const char *s2)
 }
 #endif
 
-#if !HAVE_STRNCASECMP && !HAVE_STRNICMP && !HAVE_STRNCMPI
-/* If we don't have strncasecmp() (from POSIX), or anything that can
-   substitute for it, define our own version.  */
 
-int
-strncasecmp (const char *s1, const char *s2, int n)
-{
-  while (n-- > 0)
-    {
-      int c1 = (int) *(s1++);
-      int c2 = (int) *(s2++);
-
-      if (isalpha (c1))
-        c1 = tolower (c1);
-      if (isalpha (c2))
-        c2 = tolower (c2);
-
-      if (c1 != '\0' && c1 == c2)
-        continue;
-
-      return (c1 - c2);
-    }
-
-  return 0;
-}
-#endif
-
 #ifdef  GETLOADAVG_PRIVILEGED
 
 #ifdef POSIX
@@ -529,7 +481,6 @@ log_access (const char *flavor)
 static void
 init_access (void)
 {
-#ifndef VMS
   user_uid = getuid ();
   user_gid = getgid ();
 
@@ -543,7 +494,6 @@ init_access (void)
   log_access (_("Initialized access"));
 
   current_access = make;
-#endif
 }
 
 #endif  /* GETLOADAVG_PRIVILEGED */

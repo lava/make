@@ -18,159 +18,50 @@ this program.  If not, see <http://www.gnu.org/licenses/>.  */
    using -I. -I$srcdir will use ./config.h rather than $srcdir/config.h
    (which it would do because makeint.h was found in $srcdir).  */
 #include <config.h>
-#undef  HAVE_CONFIG_H
-#define HAVE_CONFIG_H 1
 
 /* Specify we want GNU source code.  This must be defined before any
    system headers are included.  */
 
 #define _GNU_SOURCE 1
 
-/* AIX requires this to be the first thing in the file.  */
-#if HAVE_ALLOCA_H
 # include <alloca.h>
-#else
-# ifdef _AIX
- #pragma alloca
-# else
-#  if !defined(__GNUC__) && !defined(WINDOWS32)
-#   ifndef alloca /* predefined by HP cc +Olibcalls */
-char *alloca ();
-#   endif
-#  endif
-# endif
-#endif
-
-/* Disable assert() unless we're a maintainer.
-   Some asserts are compute-intensive.  */
-#ifndef MAKE_MAINTAINER_MODE
-# define NDEBUG 1
-#endif
 
 /* Include the externally-visible content.
    Be sure to use the local one, and not one installed on the system.
    Define GMK_BUILDING_MAKE for proper selection of dllexport/dllimport
    declarations for MS-Windows.  */
-#ifdef WINDOWS32
-# define GMK_BUILDING_MAKE
-#endif
 #include "gnumake.h"
-
-#ifdef  CRAY
-/* This must happen before #include <signal.h> so
-   that the declaration therein is changed.  */
-# define signal bsdsignal
-#endif
-
-/* If we're compiling for the dmalloc debugger, turn off string inlining.  */
-#if defined(HAVE_DMALLOC_H) && defined(__GNUC__)
-# define __NO_STRING_INLINES
-#endif
 
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <signal.h>
 #include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 #include <ctype.h>
-
-#ifdef HAVE_SYS_TIMEB_H
-/* SCO 3.2 "devsys 4.2" has a prototype for 'ftime' in <time.h> that bombs
-   unless <sys/timeb.h> has been included first.  */
-# include <sys/timeb.h>
-#endif
-#if TIME_WITH_SYS_TIME
-# include <sys/time.h>
-# include <time.h>
-#else
-# if HAVE_SYS_TIME_H
-#  include <sys/time.h>
-# else
-#  include <time.h>
-# endif
-#endif
-
+#include <sys/time.h>
+#include <time.h>   
 #include <errno.h>
-
-#ifndef errno
-extern int errno;
-#endif
+#include <stdint.h>
 
 #ifndef isblank
 # define isblank(c)     ((c) == ' ' || (c) == '\t')
 #endif
 
-#ifdef __VMS
-/* In strict ANSI mode, VMS compilers should not be defining the
-   VMS macro.  Define it here instead of a bulk edit for the correct code.
- */
-# ifndef VMS
-#  define VMS
-# endif
-#endif
+#include <unistd.h>
+#include <limits.h>
+#include <sys/param.h>
 
-#ifdef  HAVE_UNISTD_H
-# include <unistd.h>
-/* Ultrix's unistd.h always defines _POSIX_VERSION, but you only get
-   POSIX.1 behavior with 'cc -YPOSIX', which predefines POSIX itself!  */
-# if defined (_POSIX_VERSION) && !defined (ultrix) && !defined (VMS)
-#  define POSIX 1
-# endif
-#endif
+#define GET_PATH_MAX   PATH_MAX
+#define PATH_VAR(var)  char var[PATH_MAX]
 
-/* Some systems define _POSIX_VERSION but are not really POSIX.1.  */
-#if (defined (butterfly) || defined (__arm) || (defined (__mips) && defined (_SYSTYPE_SVR3)) || (defined (sequent) && defined (i386)))
-# undef POSIX
-#endif
+#define IS_ABSOLUTE(n) (n[0] == '/')
+#define ROOT_LEN 1
 
-#if !defined (POSIX) && defined (_AIX) && defined (_POSIX_SOURCE)
-# define POSIX 1
-#endif
+#define FILE_TIMESTAMP uintmax_t
+#define RETSIGTYPE     void
 
-#ifndef RETSIGTYPE
-# define RETSIGTYPE     void
-#endif
-
-#ifndef sigmask
-# define sigmask(sig)   (1 << ((sig) - 1))
-#endif
-
-#ifndef HAVE_SA_RESTART
-# define SA_RESTART 0
-#endif
-
-#ifdef  HAVE_LIMITS_H
-# include <limits.h>
-#endif
-#ifdef  HAVE_SYS_PARAM_H
-# include <sys/param.h>
-#endif
-
-#ifndef PATH_MAX
-# ifndef POSIX
-#  define PATH_MAX      MAXPATHLEN
-# endif
-#endif
-#ifndef MAXPATHLEN
-# define MAXPATHLEN 1024
-#endif
-
-#ifdef  PATH_MAX
-# define GET_PATH_MAX   PATH_MAX
-# define PATH_VAR(var)  char var[PATH_MAX]
-#else
-# define NEED_GET_PATH_MAX 1
-# define GET_PATH_MAX   (get_path_max ())
-# define PATH_VAR(var)  char *var = alloca (GET_PATH_MAX)
-unsigned int get_path_max (void);
-#endif
-
-#ifndef CHAR_BIT
-# define CHAR_BIT 8
-#endif
-
-#ifndef USHRT_MAX
-# define USHRT_MAX 65535
-#endif
+#define MAP_VMSCOMMA   0x0000
 
 /* Nonzero if the integer type T is signed.
    Use <= to avoid GCC warnings about always-false expressions.  */
@@ -186,110 +77,8 @@ unsigned int get_path_max (void);
 # define CHAR_MAX INTEGER_TYPE_MAXIMUM (char)
 #endif
 
-#ifdef STAT_MACROS_BROKEN
-# ifdef S_ISREG
-#  undef S_ISREG
-# endif
-# ifdef S_ISDIR
-#  undef S_ISDIR
-# endif
-#endif  /* STAT_MACROS_BROKEN.  */
-
-#ifndef S_ISREG
-# define S_ISREG(mode)  (((mode) & S_IFMT) == S_IFREG)
-#endif
-#ifndef S_ISDIR
-# define S_ISDIR(mode)  (((mode) & S_IFMT) == S_IFDIR)
-#endif
-
-#ifdef VMS
-# include <fcntl.h>
-# include <types.h>
-# include <unixlib.h>
-# include <unixio.h>
-# include <perror.h>
-/* Needed to use alloca on VMS.  */
-# include <builtins.h>
-
-extern int vms_use_mcr_command;
-extern int vms_always_use_cmd_file;
-extern int vms_gnv_shell;
-extern int vms_comma_separator;
-extern int vms_legacy_behavior;
-extern int vms_unix_simulation;
-#endif
-
-#ifndef __attribute__
-/* This feature is available in gcc versions 2.5 and later.  */
-# if __GNUC__ < 2 || (__GNUC__ == 2 && __GNUC_MINOR__ < 5) || __STRICT_ANSI__
-#  define __attribute__(x)
-# endif
-/* The __-protected variants of 'format' and 'printf' attributes
-   are accepted by gcc versions 2.6.4 (effectively 2.7) and later.  */
-# if __GNUC__ < 2 || (__GNUC__ == 2 && __GNUC_MINOR__ < 7)
-#  define __format__ format
-#  define __printf__ printf
-# endif
-#endif
 #define UNUSED  __attribute__ ((unused))
 
-#if defined (STDC_HEADERS) || defined (__GNU_LIBRARY__)
-# include <stdlib.h>
-# include <string.h>
-# define ANSI_STRING 1
-#else   /* No standard headers.  */
-# ifdef HAVE_STRING_H
-#  include <string.h>
-#  define ANSI_STRING 1
-# else
-#  include <strings.h>
-# endif
-# ifdef HAVE_MEMORY_H
-#  include <memory.h>
-# endif
-# ifdef HAVE_STDLIB_H
-#  include <stdlib.h>
-# else
-void *malloc (int);
-void *realloc (void *, int);
-void free (void *);
-
-void abort (void) __attribute__ ((noreturn));
-void exit (int) __attribute__ ((noreturn));
-# endif /* HAVE_STDLIB_H.  */
-
-#endif /* Standard headers.  */
-
-/* These should be in stdlib.h.  Make sure we have them.  */
-#ifndef EXIT_SUCCESS
-# define EXIT_SUCCESS 0
-#endif
-#ifndef EXIT_FAILURE
-# define EXIT_FAILURE 1
-#endif
-
-#ifndef  ANSI_STRING
-
-/* SCO Xenix has a buggy macro definition in <string.h>.  */
-#undef  strerror
-#if !defined(__DECC)
-char *strerror (int errnum);
-#endif
-
-#endif  /* !ANSI_STRING.  */
-#undef  ANSI_STRING
-
-#if HAVE_INTTYPES_H
-# include <inttypes.h>
-#endif
-#if HAVE_STDINT_H
-# include <stdint.h>
-#endif
-#define FILE_TIMESTAMP uintmax_t
-
-#if !defined(HAVE_STRSIGNAL)
-char *strsignal (int signum);
-#endif
 
 /* ISDIGIT offers the following features:
    - Its arg may be any int or unsigned int; it need not be an unsigned char.
@@ -310,14 +99,7 @@ char *strsignal (int signum);
 /* Test if two strings are equal, but match case-insensitively on systems
    which have case-insensitive filesystems.  Should only be used for
    filenames!  */
-#ifdef HAVE_CASE_INSENSITIVE_FS
-# define patheq(a, b) \
-    ((a) == (b) \
-     || (tolower((unsigned char)*(a)) == tolower((unsigned char)*(b)) \
-         && (*(a) == '\0' || !strcasecmp ((a) + 1, (b) + 1))))
-#else
-# define patheq(a, b) streq(a, b)
-#endif
+#define patheq(a, b) streq(a, b)
 
 #define strneq(a, b, l) (strncmp ((a), (b), (l)) == 0)
 
@@ -329,70 +111,11 @@ char *strsignal (int signum);
 
 /* Handle gettext and locales.  */
 
-#if HAVE_LOCALE_H
-# include <locale.h>
-#else
-# define setlocale(category, locale)
-#endif
+#include <locale.h>
 
-#include <gettext.h>
-
-#define _(msgid)            gettext (msgid)
-#define N_(msgid)           gettext_noop (msgid)
-#define S_(msg1,msg2,num)   ngettext (msg1,msg2,num)
-
-/* Handle other OSs.
-   To overcome an issue parsing paths in a DOS/Windows environment when
-   built in a unix based environment, override the PATH_SEPARATOR_CHAR
-   definition unless being built for Cygwin. */
-#if defined(HAVE_DOS_PATHS) && !defined(__CYGWIN__)
-# undef PATH_SEPARATOR_CHAR
-# define PATH_SEPARATOR_CHAR ';'
-#elif !defined(PATH_SEPARATOR_CHAR)
-# if defined (VMS)
-#  define PATH_SEPARATOR_CHAR (vms_comma_separator ? ',' : ':')
-# else
-#  define PATH_SEPARATOR_CHAR ':'
-# endif
-#endif
-
-/* This is needed for getcwd() and chdir(), on some W32 systems.  */
-#if defined(HAVE_DIRECT_H)
-# include <direct.h>
-#endif
-
-#ifdef WINDOWS32
-# include <fcntl.h>
-# include <malloc.h>
-# define pipe(_p)        _pipe((_p), 512, O_BINARY)
-# define kill(_pid,_sig) w32_kill((_pid),(_sig))
-/* MSVC and Watcom C don't have ftruncate.  */
-# if defined(_MSC_VER) || defined(__WATCOMC__)
-#  define ftruncate(_fd,_len) _chsize(_fd,_len)
-# endif
-/* MinGW64 doesn't have _S_ISDIR.  */
-# ifndef _S_ISDIR
-#  define _S_ISDIR(m)  S_ISDIR(m)
-# endif
-
-void sync_Path_environment (void);
-int w32_kill (pid_t pid, int sig);
-int find_and_set_default_shell (const char *token);
-
-/* indicates whether or not we have Bourne shell */
-extern int no_default_sh_exe;
-
-/* is default_shell unixy? */
-extern int unixy_shell;
-
-/* We don't have a preferred fixed value for LOCALEDIR.  */
-# ifndef LOCALEDIR
-#  define LOCALEDIR NULL
-# endif
-
-/* Include only the minimal stuff from windows.h.   */
-#define WIN32_LEAN_AND_MEAN
-#endif  /* WINDOWS32 */
+#define _(msgid)  msgid
+#define N_(msgid) msgid
+#define S_(msg1,msg2,num)  msgid
 
 #define ANY_SET(_v,_m)  (((_v)&(_m)) != 0)
 #define NONE_SET(_v,_m) (! ANY_SET ((_v),(_m)))
@@ -416,21 +139,9 @@ extern int unixy_shell;
 /* The set of characters which are directory separators is OS-specific.  */
 #define MAP_DIRSEP      0x8000
 
-#ifdef VMS
-# define MAP_VMSCOMMA   MAP_COMMA
-#else
-# define MAP_VMSCOMMA   0x0000
-#endif
-
 #define STOP_SET(_v,_m) ANY_SET (stopchar_map[(unsigned char)(_v)],(_m))
 
-#if defined(HAVE_SYS_RESOURCE_H) && defined(HAVE_GETRLIMIT) && defined(HAVE_SETRLIMIT)
-# define SET_STACK_SIZE
-#endif
-#ifdef SET_STACK_SIZE
-# include <sys/resource.h>
-extern struct rlimit stack_limit;
-#endif
+#include <sys/resource.h>
 
 #define NILF ((gmk_floc *)0)
 
@@ -551,49 +262,6 @@ typedef int (*load_func_t)(const gmk_floc *flocp);
 int load_file (const gmk_floc *flocp, const char **filename, int noerror);
 void unload_file (const char *name);
 
-/* We omit these declarations on non-POSIX systems which define _POSIX_VERSION,
-   because such systems often declare them in header files anyway.  */
-
-#if !defined (__GNU_LIBRARY__) && !defined (POSIX) && !defined (_POSIX_VERSION) && !defined(WINDOWS32)
-
-long int atol ();
-# ifndef VMS
-long int lseek ();
-# endif
-
-#endif  /* Not GNU C library or POSIX.  */
-
-#ifdef  HAVE_GETCWD
-# if !defined(VMS) && !defined(__DECC)
-char *getcwd ();
-# endif
-#else
-char *getwd ();
-# define getcwd(buf, len)       getwd (buf)
-#endif
-
-#if !HAVE_STRCASECMP
-# if HAVE_STRICMP
-#  define strcasecmp stricmp
-# elif HAVE_STRCMPI
-#  define strcasecmp strcmpi
-# else
-/* Create our own, in misc.c */
-int strcasecmp (const char *s1, const char *s2);
-# endif
-#endif
-
-#if !HAVE_STRNCASECMP
-# if HAVE_STRNICMP
-#  define strncasecmp strnicmp
-# elif HAVE_STRNCMPI
-#  define strncasecmp strncmpi
-# else
-/* Create our own, in misc.c */
-int strncasecmp (const char *s1, const char *s2, int n);
-# endif
-#endif
-
 #define OUTPUT_SYNC_NONE    0
 #define OUTPUT_SYNC_LINE    1
 #define OUTPUT_SYNC_TARGET  2
@@ -631,42 +299,7 @@ extern double max_load_average;
 extern int max_load_average;
 #endif
 
-#ifdef WINDOWS32
-extern char *program;
-#else
 extern const char *program;
-#endif
-
-#ifdef VMS
-const char *vms_command (const char *argv0);
-const char *vms_progname (const char *argv0);
-
-void vms_exit (int);
-# define _exit(foo) vms_exit(foo)
-# define exit(foo) vms_exit(foo)
-
-extern char *program_name;
-
-void
-set_program_name (const char *arv0);
-
-int
-need_vms_symbol (void);
-
-int
-create_foreign_command (const char *command, const char *image);
-
-int
-vms_export_dcl_symbol (const char *name, const char *value);
-
-int
-vms_putenv_symbol (const char *string);
-
-void
-vms_restore_symbol (const char *string);
-
-#endif
-
 extern char *starting_directory;
 extern unsigned int makelevel;
 extern char *version_string, *remote_description, *make_host;
@@ -700,24 +333,6 @@ extern int handling_fatal_signal;
                           { _wildcard(pargc, pargv); _response(pargc, pargv); }
 # else
 #  define initialize_main(pargc, pargv)
-# endif
-#endif
-
-#ifdef __EMX__
-# if !defined chdir
-#  define chdir _chdir2
-# endif
-# if !defined getcwd
-#  define getcwd _getcwd2
-# endif
-
-/* NO_CHDIR2 causes make not to use _chdir2() and _getcwd2() instead of
-   chdir() and getcwd(). This avoids some error messages for the
-   make testsuite but restricts the drive letter support. */
-# ifdef NO_CHDIR2
-#  warning NO_CHDIR2: usage of drive letters restricted
-#  undef chdir
-#  undef getcwd
 # endif
 #endif
 

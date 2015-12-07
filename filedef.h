@@ -121,13 +121,9 @@ char *build_target_list (char *old_list);
 void print_prereqs (const struct dep *deps);
 void print_file_data_base (void);
 
-#if FILE_TIMESTAMP_HI_RES
-# define FILE_TIMESTAMP_STAT_MODTIME(fname, st) \
-    file_timestamp_cons (fname, (st).st_mtime, (st).ST_MTIM_NSEC)
-#else
-# define FILE_TIMESTAMP_STAT_MODTIME(fname, st) \
-    file_timestamp_cons (fname, (st).st_mtime, 0)
-#endif
+#define FILE_TIMESTAMP_HI_RES 1
+#define FILE_TIMESTAMP_STAT_MODTIME(fname, st) \
+    file_timestamp_cons (fname, (st).st_mtim.tv_sec, (st).st_mtim.tv_nsec)
 
 /* If FILE_TIMESTAMP is 64 bits (or more), use nanosecond resolution.
    (Multiply by 2**30 instead of by 10**9 to save time at the cost of

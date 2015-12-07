@@ -68,12 +68,6 @@ this program.  If not, see <http://www.gnu.org/licenses/>.  */
 # include <unistd.h>
 #endif	/* GNU C library.  */
 
-#ifdef VMS
-# include <unixlib.h>
-# if HAVE_STRING_H - 0
-#  include <string.h>
-# endif
-#endif
 
 /* This is for other GNU distributions with internationalized messages.
    When compiling libc, the _ macro is predefined.  */

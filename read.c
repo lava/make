@@ -29,19 +29,7 @@ this program.  If not, see <http://www.gnu.org/licenses/>.  */
 #include "debug.h"
 #include "hash.h"
 
-
-#ifdef WINDOWS32
-#include <windows.h>
-#include "sub_proc.h"
-#else  /* !WINDOWS32 */
-#ifndef _AMIGA
-#ifndef VMS
 #include <pwd.h>
-#else
-struct passwd *getpwnam (char *name);
-#endif
-#endif
-#endif /* !WINDOWS32 */
 
 /* A 'struct ebuffer' controls the origin of the makefile we are currently
    eval'ing.
@@ -103,17 +91,10 @@ static struct conditionals *conditionals = &toplevel_conditionals;
 
 static const char *default_include_directories[] =
   {
-#if defined(WINDOWS32) && !defined(INCLUDEDIR)
-/* This completely up to the user when they install MSVC or other packages.
-   This is defined as a placeholder.  */
-# define INCLUDEDIR "."
-#endif
     INCLUDEDIR,
-#ifndef _AMIGA
     "/usr/gnu/include",
     "/usr/local/include",
     "/usr/include",
-#endif
     0
   };
 
@@ -164,7 +145,7 @@ static char *unescape_char (char *string, int c);
 */
 #define word1eq(s)      (wlen == CSTRLEN (s) && strneq (s, p, CSTRLEN (s)))
 
-
+
 /* Read in all the makefiles and return a chain of targets to rebuild.  */
 
 struct dep *
@@ -239,21 +220,7 @@ read_all_makefiles (const char **makefiles)
   if (num_makefiles == 0)
     {
       static const char *default_makefiles[] =
-#ifdef VMS
-        /* all lower case since readdir() (the vms version) 'lowercasifies' */
-        /* TODO: Above is not always true, this needs more work */
-        { "makefile.vms", "gnumakefile", "makefile", 0 };
-#else
-#ifdef _AMIGA
-        { "GNUmakefile", "Makefile", "SMakefile", 0 };
-#else /* !Amiga && !VMS */
-#ifdef WINDOWS32
-        { "GNUmakefile", "makefile", "Makefile", "makefile.mak", 0 };
-#else /* !Amiga && !VMS && !WINDOWS32 */
         { "GNUmakefile", "makefile", "Makefile", 0 };
-#endif /* !Amiga && !VMS && !WINDOWS32 */
-#endif /* AMIGA */
-#endif /* VMS */
       const char **p = default_makefiles;
       while (*p != 0 && !file_exists_p (*p))
         ++p;
@@ -266,7 +233,7 @@ read_all_makefiles (const char **makefiles)
       else
         {
           /* No default makefile was found.  Add the default makefiles to the
-             'read_files' chain so they will be updated if possible.  */
+             'read_files' chain so they will be utpdated if possible.  */
           struct dep *tail = read_files;
           /* Add them to the tail, after any MAKEFILES variable makefiles.  */
           while (tail != 0 && tail->next != 0)
@@ -292,7 +259,7 @@ read_all_makefiles (const char **makefiles)
 
   return read_files;
 }
-
+
 /* Install a new conditional and return the previous one.  */
 
 static struct conditionals *
@@ -318,7 +285,7 @@ restore_conditionals (struct conditionals *saved)
   /* Restore state.  */
   conditionals = saved;
 }
-
+
 static int
 eval_makefile (const char *filename, int flags)
 {
@@ -364,12 +331,8 @@ eval_makefile (const char *filename, int flags)
   /* Check for unrecoverable errors: out of mem or FILE slots.  */
   switch (makefile_errno)
     {
-#ifdef EMFILE
     case EMFILE:
-#endif
-#ifdef ENFILE
     case ENFILE:
-#endif
     case ENOMEM:
       {
         const char *err = strerror (makefile_errno);
@@ -427,16 +390,13 @@ eval_makefile (const char *filename, int flags)
 
   /* Set close-on-exec to avoid leaking the makefile to children, such as
      $(shell ...).  */
-#ifdef HAVE_FILENO
   CLOSE_ON_EXEC (fileno (ebuf.fp));
-#endif
 
   /* Add this makefile to the list. */
   do_variable_definition (&ebuf.floc, "MAKEFILE_LIST", filename, o_file,
                           f_append, 0);
 
   /* Evaluate the makefile */
-
   ebuf.size = 200;
   ebuf.buffer = ebuf.bufnext = ebuf.bufstart = xmalloc (ebuf.size);
 
@@ -566,7 +526,6 @@ parse_var_assignment (const char *line, struct vmodifiers *vmod)
   vmod->assign_v = 1;
   return (char *)p;
 }
-
 
 /* Read file FILENAME as a makefile and add its contents to the data base.
 
@@ -678,7 +637,6 @@ eval (struct ebuffer *ebuf, int set_default)
           /* If there is no preceding rule line, don't treat this line
              as a command, even though it begins with a recipe prefix.
              SunOS 4 make appears to behave this way.  */
-
           if (filenames != 0)
             {
               if (ignoring)
@@ -863,7 +821,7 @@ eval (struct ebuffer *ebuf, int set_default)
         }
 
       /* Handle include and variants.  */
-      if (word1eq ("include") || word1eq ("-include") || word1eq ("sinclude"))
+      if (word1eq ("include") || word1eq ("-include"))
         {
           /* We have found an 'include' line specifying a nested
              makefile to be read at this point.  */
@@ -1091,16 +1049,7 @@ eval (struct ebuffer *ebuf, int set_default)
               }
 
             colonp = find_char_unquote (p2, MAP_COLON);
-#ifdef HAVE_DOS_PATHS
-            /* The drive spec brain-damage strikes again...  */
-            /* Note that the only separators of targets in this context
-               are whitespace and a left paren.  If others are possible,
-               they should be added to the string in the call to index.  */
-            while (colonp && (colonp[1] == '/' || colonp[1] == '\\') &&
-                   colonp > p2 && isalpha ((unsigned char)colonp[-1]) &&
-                   (colonp == p2 + 1 || strchr (" \t(", colonp[-2]) != 0))
-              colonp = find_char_unquote (colonp + 1, MAP_COLON);
-#endif
+
             if (colonp != 0)
               break;
 
@@ -1229,38 +1178,7 @@ eval (struct ebuffer *ebuf, int set_default)
             else
               break;
           }
-#ifdef _AMIGA
-        /* Here, the situation is quite complicated. Let's have a look
-           at a couple of targets:
 
-           install: dev:make
-
-           dev:make: make
-
-           dev:make:: xyz
-
-           The rule is that it's only a target, if there are TWO :'s
-           OR a space around the :.
-        */
-        if (p && !(isspace ((unsigned char)p[1]) || !p[1]
-                   || isspace ((unsigned char)p[-1])))
-          p = 0;
-#endif
-#ifdef HAVE_DOS_PATHS
-        {
-          int check_again;
-          do {
-            check_again = 0;
-            /* For DOS-style paths, skip a "C:\..." or a "C:/..." */
-            if (p != 0 && (p[1] == '\\' || p[1] == '/') &&
-                isalpha ((unsigned char)p[-1]) &&
-                (p == p2 + 1 || strchr (" \t:(", p[-2]) != 0)) {
-              p = strchr (p + 1, ':');
-              check_again = 1;
-            }
-          } while (check_again);
-        }
-#endif
         if (p != 0)
           {
             struct nameseq *target;
@@ -1341,11 +1259,7 @@ eval (struct ebuffer *ebuf, int set_default)
 
                 /* See if this target's name does not start with a '.',
                    unless it contains a slash.  */
-                if (*name == '.' && strchr (name, '/') == 0
-#ifdef HAVE_DOS_PATHS
-                    && strchr (name, '\\') == 0
-#endif
-                    )
+                if (*name == '.' && strchr (name, '/') == 0)
                   continue;
 
 
@@ -1404,7 +1318,7 @@ eval (struct ebuffer *ebuf, int set_default)
   free (collapsed);
   free (commands);
 }
-
+
 
 /* Remove comments from LINE.
    This is done by copying the text at LINE onto itself.  */
@@ -2079,10 +1993,8 @@ record_files (struct nameseq *filenames, const char *pattern,
         }
       else if (streq (name, ".SECONDEXPANSION"))
         second_expansion = 1;
-#if !defined (__MSDOS__) && !defined (__EMX__)
       else if (streq (name, ".ONESHELL"))
         one_shell = 1;
-#endif
 
       /* If this is a static pattern rule:
          'targets: target%pattern: prereq%pattern; recipe',
@@ -2824,10 +2736,6 @@ construct_include_path (const char **arg_dirs)
     for (cpp = arg_dirs; *cpp != 0; ++cpp)
       ++idx;
 
-#ifdef  __MSDOS__
-  /* Add one for $DJDIR.  */
-  ++idx;
-#endif
 
   dirs = xmalloc (idx * sizeof (const char *));
 
@@ -2868,25 +2776,6 @@ construct_include_path (const char **arg_dirs)
 
   /* Now add the standard default dirs at the end.  */
 
-#ifdef  __MSDOS__
-  {
-    /* The environment variable $DJDIR holds the root of the DJGPP directory
-       tree; add ${DJDIR}/include.  */
-    struct variable *djdir = lookup_variable ("DJDIR", 5);
-
-    if (djdir)
-      {
-        unsigned int len = strlen (djdir->value) + 8;
-        char *defdir = alloca (len + 1);
-
-        strcat (strcpy (defdir, djdir->value), "/include");
-        dirs[idx++] = strcache_add (defdir);
-
-        if (len > max_incl_len)
-          max_incl_len = len;
-      }
-  }
-#endif
 
   for (cpp = default_include_directories; *cpp != 0; ++cpp)
     {
@@ -2922,7 +2811,6 @@ construct_include_path (const char **arg_dirs)
 char *
 tilde_expand (const char *name)
 {
-#ifndef VMS
   if (name[1] == '/' || name[1] == '\0')
     {
       extern char *getenv ();
@@ -2986,7 +2874,6 @@ tilde_expand (const char *name)
         *userend = '/';
     }
 # endif /* !AMIGA && !WINDOWS32 */
-#endif /* !VMS */
   return 0;
 }
 
@@ -3084,40 +2971,12 @@ parse_file_seq (char **stringp, unsigned int size, int stopmap,
          Throughout this iteration S points to the start.  */
       s = p;
       p = find_char_unquote (p, stopmap|MAP_VMSCOMMA|MAP_BLANK);
-#ifdef VMS
-        /* convert comma separated list to space separated */
-      if (p && *p == ',')
-        *p =' ';
-#endif
-#ifdef _AMIGA
-      if (p && STOP_SET (*p, stopmap & MAP_COLON)
-          && !(isspace ((unsigned char)p[1]) || !p[1]
-               || isspace ((unsigned char)p[-1])))
-        p = find_char_unquote (p+1, stopmap|MAP_VMSCOMMA|MAP_BLANK);
-#endif
-#ifdef HAVE_DOS_PATHS
-    /* For DOS paths, skip a "C:\..." or a "C:/..." until we find the
-       first colon which isn't followed by a slash or a backslash.
-       Note that tokens separated by spaces should be treated as separate
-       tokens since make doesn't allow path names with spaces */
-    if (stopmap | MAP_COLON)
-      while (p != 0 && !isspace ((unsigned char)*p) &&
-             (p[1] == '\\' || p[1] == '/') && isalpha ((unsigned char)p[-1]))
-        p = find_char_unquote (p + 1, stopmap|MAP_VMSCOMMA|MAP_BLANK);
-#endif
+
       if (p == 0)
         p = s + strlen (s);
 
       /* Strip leading "this directory" references.  */
       if (NONE_SET (flags, PARSEFS_NOSTRIP))
-#ifdef VMS
-        /* Skip leading '[]'s. should only be one set or bug somwhere else */
-        if (p - s > 2 && s[0] == '[' && s[1] == ']')
-            s += 2;
-        /* Skip leading '<>'s. should only be one set or bug somwhere else */
-        if (p - s > 2 && s[0] == '<' && s[1] == '>')
-            s += 2;
-#endif
         /* Skip leading './'s.  */
         while (p - s > 2 && s[0] == '.' && s[1] == '/')
           {
@@ -3133,38 +2992,16 @@ parse_file_seq (char **stringp, unsigned int size, int stopmap,
       if (s == p)
         {
         /* The name was stripped to empty ("./"). */
-#if defined(_AMIGA)
-          /* PDS-- This cannot be right!! */
-          tp[0] = '\0';
-          nlen = 0;
-#else
           tp[0] = '.';
           tp[1] = '/';
           tp[2] = '\0';
           nlen = 2;
-#endif
         }
       else
         {
-#ifdef VMS
-/* VMS filenames can have a ':' in them but they have to be '\'ed but we need
- *  to remove this '\' before we can use the filename.
- * xstrdup called because S may be read-only string constant.
- */
-          char *n = tp;
-          while (s < p)
-            {
-              if (s[0] == '\\' && s[1] == ':')
-                ++s;
-              *(n++) = *(s++);
-            }
-          n[0] = '\0';
-          nlen = strlen (tp);
-#else
           nlen = p - s;
           memcpy (tp, s, nlen);
           tp[nlen] = '\0';
-#endif
         }
 
       /* At this point, TP points to the element and NLEN is its length.  */

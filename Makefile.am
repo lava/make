@@ -21,14 +21,7 @@ ACLOCAL_AMFLAGS	=  -I config
 
 MAKE_HOST =	@MAKE_HOST@
 
-# Only process if target is MS-Windows
-if WINDOWSENV
-  MAYBE_W32 =	w32
-  W32INC =	-I $(top_srcdir)/w32/include
-  W32LIB =	-Lw32 -lw32
-endif
-
-SUBDIRS =	glob config po doc $(MAYBE_W32)
+SUBDIRS = 
 
 bin_PROGRAMS =	make
 include_HEADERS = gnumake.h
@@ -42,45 +35,25 @@ endif
 make_SOURCES =	ar.c arscan.c commands.c default.c dir.c expand.c file.c \
 		function.c getopt.c getopt1.c guile.c implicit.c job.c load.c \
 		loadapi.c main.c misc.c output.c read.c remake.c rule.c \
-		signame.c strcache.c variable.c version.c vpath.c hash.c \
+		strcache.c variable.c version.c vpath.c hash.c \
 		$(remote)
 
-EXTRA_make_SOURCES = vmsjobs.c remote-stub.c remote-cstms.c
+EXTRA_make_SOURCES = remote-stub.c remote-cstms.c
 
 noinst_HEADERS = commands.h dep.h filedef.h job.h makeint.h rule.h variable.h \
-		debug.h getopt.h gettext.h hash.h output.h
+		debug.h getopt.h hash.h output.h
 
-make_LDADD =	@LIBOBJS@ @ALLOCA@ $(GLOBLIB) @GETLOADAVG_LIBS@ @LIBINTL@ \
-		$(GUILE_LIBS)
-# Only process if target is MS-Windows
-if WINDOWSENV
-    make_LDADD += $(W32LIB)
-endif
-
-man_MANS =	make.1
+make_LDADD =	@LIBOBJS@ $(GUILE_LIBS)
 
 DEFS =		-DLOCALEDIR=\"$(localedir)\" -DLIBDIR=\"$(libdir)\" -DINCLUDEDIR=\"$(includedir)\" @DEFS@
 
 AM_CPPFLAGS =	$(GLOBINC)
 AM_CFLAGS =	$(GUILE_CFLAGS)
-# Only process if target is MS-Windows
-if WINDOWSENV
-    AM_CPPFLAGS +=	$(W32INC)
-endif
 
 
 # Extra stuff to include in the distribution.
 
-EXTRA_DIST =	README build.sh.in $(man_MANS) \
-		README.customs README.OS2 \
-		SCOPTIONS SMakefile \
-		README.Amiga Makefile.ami config.ami make.lnk amiga.c amiga.h \
-		README.DOS Makefile.DOS configure.bat dosbuild.bat configh.dos\
-		README.W32 NMakefile config.h.W32 build_w32.bat subproc.bat \
-		make_msvc_net2003.sln make_msvc_net2003.vcproj \
-		README.VMS makefile.vms makefile.com config.h-vms \
-		vmsdir.h vmsfunctions.c vmsify.c vms_exit.c vms_progname.c \
-		vms_export_symbol.c vms_export_symbol_test.com \
+EXTRA_DIST =	README build.sh.in \
 		gmk-default.scm gmk-default.h
 
 # This is built during configure, but behind configure's back
@@ -195,12 +168,4 @@ check-regression: tests/config-flags.pm
 	fi
 
 
-# --------------- Maintainer's Section
 
-# Tell automake that I haven't forgotten about this file and it will be
-# created before we build a distribution (see maintMakefile in the Git
-# distribution).
-
-README:
-
-@MAINT_MAKEFILE@

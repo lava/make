@@ -23,21 +23,9 @@ this program.  If not, see <http://www.gnu.org/licenses/>.  */
 #include <stdio.h>
 #include <stdarg.h>
 
-#ifdef HAVE_UNISTD_H
-# include <unistd.h>
-#endif
+#include <unistd.h>
 
-#ifdef HAVE_FCNTL_H
-# include <fcntl.h>
-#else
-# include <sys/file.h>
-#endif
-
-#ifdef WINDOWS32
-# include <windows.h>
-# include <io.h>
-# include "sub_proc.h"
-#endif /* WINDOWS32 */
+#include <fcntl.h>
 
 struct output *output_context = NULL;
 unsigned int stdio_traced = 0;
@@ -178,20 +166,6 @@ sync_init ()
 {
   int combined_output = 0;
 
-#ifdef WINDOWS32
-  if ((!STREAM_OK (stdout) && !STREAM_OK (stderr))
-      || (sync_handle = create_mutex ()) == -1)
-    {
-      perror_with_name ("output-sync suppressed: ", "stderr");
-      output_sync = 0;
-    }
-  else
-    {
-      combined_output = same_stream (stdout, stderr);
-      prepare_mutex_handle_string (sync_handle);
-    }
-
-#else
   if (STREAM_OK (stdout))
     {
       struct stat stbuf_o, stbuf_e;
@@ -209,7 +183,6 @@ sync_init ()
       perror_with_name ("output-sync suppressed: ", "stderr");
       output_sync = 0;
     }
-#endif
 
   return combined_output;
 }
@@ -219,14 +192,6 @@ static void
 pump_from_tmp (int from, FILE *to)
 {
   static char buffer[8192];
-
-#ifdef WINDOWS32
-  int prev_mode;
-
-  /* "from" is opened by open_tmpfd, which does it in binary mode, so
-     we need the mode of "to" to match that.  */
-  prev_mode = _setmode (fileno (to), _O_BINARY);
-#endif
 
   if (lseek (from, 0, SEEK_SET) == -1)
     perror ("lseek()");
@@ -246,12 +211,6 @@ pump_from_tmp (int from, FILE *to)
         }
       fflush (to);
     }
-
-#ifdef WINDOWS32
-  /* Switch "to" back to its original mode, so that log messages by
-     Make have the same EOL format as without --output-sync.  */
-  _setmode (fileno (to), prev_mode);
-#endif
 }
 
 /* Obtain the lock for writing output.  */
@@ -403,55 +362,23 @@ output_dump (struct output *out)
 
 /* Provide support for temporary files.  */
 
-#ifndef HAVE_STDLIB_H
-# ifdef HAVE_MKSTEMP
-int mkstemp (char *template);
-# else
-char *mktemp (char *template);
-# endif
-#endif
 
 FILE *
 output_tmpfile (char **name, const char *template)
 {
-#ifdef HAVE_FDOPEN
   int fd;
-#endif
 
-#if defined HAVE_MKSTEMP || defined HAVE_MKTEMP
-# define TEMPLATE_LEN   strlen (template)
-#else
-# define TEMPLATE_LEN   L_tmpnam
-#endif
-  *name = xmalloc (TEMPLATE_LEN + 1);
+  *name = xmalloc (strlen (template) + 1);
   strcpy (*name, template);
 
-#if defined HAVE_MKSTEMP && defined HAVE_FDOPEN
   /* It's safest to use mkstemp(), if we can.  */
   fd = mkstemp (*name);
   if (fd == -1)
     return 0;
-  return fdopen (fd, "w");
-#else
-# ifdef HAVE_MKTEMP
-  (void) mktemp (*name);
-# else
-  (void) tmpnam (*name);
-# endif
 
-# ifdef HAVE_FDOPEN
-  /* Can't use mkstemp(), but guard against a race condition.  */
-  fd = open (*name, O_CREAT|O_EXCL|O_WRONLY, 0600);
-  if (fd == -1)
-    return 0;
   return fdopen (fd, "w");
-# else
-  /* Not secure, but what can we do?  */
-  return fopen (*name, "w");
-# endif
-#endif
 }
-
+
 
 /* This code is stolen from gnulib.
    If/when we abandon the requirement to work with K&R compilers, we can
